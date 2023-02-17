@@ -10,3 +10,6 @@ registerTitle{
     color: black;
     text-align: center;
 }
+@media print {
+    .header, .footer {display: none !important;}
+}

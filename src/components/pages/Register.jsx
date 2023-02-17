@@ -52,6 +52,7 @@ export default function Register({ currentUser, setCurrentUser }) {
             let login = await axios.post('http://localhost:8000/users/login', form)
 
             let { token } = login.data
+            localStorage.setItem('jwt', token)
             let decoded = jwt_decode(token)
             setCurrentUser(decoded)
             // console.log(login.data)
