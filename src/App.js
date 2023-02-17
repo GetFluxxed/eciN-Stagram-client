@@ -34,15 +34,15 @@ function App() {
   return (
     <div className='app'>
       <Router>
-      <Header handleLogout={handleLogout}/>
+        <Header handleLogout={handleLogout} />
         <Routes>
           <Route path="/" element={<Home currentUser={currentUser} />} />
-          
-          <Route path="/profile/:id" element={<Profile />} />
+
+          <Route path="/profile/:id" element={<Profile currentUser={currentUser} />} />
 
           <Route path="/register" element={<Register currentUser={currentUser} setCurrentUser={setCurrentUser} />} />
         </Routes>
-      <Footer />
+        <Footer />
       </Router>
     </div>
   )
