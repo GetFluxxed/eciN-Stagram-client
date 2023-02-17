@@ -3,7 +3,9 @@ import { useParams } from 'react-router-dom'
 import "../../css/Profile.css";
 import axios from 'axios'
 import Modal from 'react-modal'
+import Upload from "../Upload";
 import * as toxicity from '@tensorflow-models/toxicity'
+import Header from '../Header'
 
 let modalStyles = {
     content: {
@@ -20,7 +22,7 @@ let modalStyles = {
     }
 }
 
-export default function Profile({ currentUser }) {
+export default function Profile({ currentUser, handleLogout }) {
     const [prof, setProf] = useState([])
     const [postIsOpen, setPostIsOpen] = useState(false)
     const [details, setDetails] = useState([])
@@ -28,14 +30,25 @@ export default function Profile({ currentUser }) {
     const [newComment, setNewComment] = useState('')
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(false)
-
+    const [isToxic, setIsToxic] = useState(null)
 
     let { id } = useParams()
+    const yes = (
+        <>
+            <p>Toxic Comment! Say something nice instead.</p>
+        </>
+    )
+    const no = (
+        <>
+            <p></p>
+        </>
+    )
 
     useEffect(() => {
         const fetchProfile = async () => {
             try {
                 const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/posts/${id}`)
+                console.log(response)
                 setProf(response.data)
 
             } catch (err) {
@@ -47,6 +60,7 @@ export default function Profile({ currentUser }) {
     // console.log(prof.posts)
 
     const openPost = async (e) => {
+        setIsToxic(null)
         setDetails(prof?.posts[e])
         setPostIsOpen(true)
         const url = `${process.env.REACT_APP_SERVER_URL}/posts/${prof?.posts[e].id}/comments`
@@ -59,17 +73,47 @@ export default function Profile({ currentUser }) {
         setPostIsOpen(false)
     }
 
+    const handleDeleteClick = async (e) => {
+        try {
+            e.preventDefault()
+            // console.log(comments)
+            // console.log(e.target.parentElement.id)
+            await axios.delete(`${process.env.REACT_APP_SERVER_URL}/posts/${details?.id}/comments/${e.target.parentElement.id}`)
+            let response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/posts/${details.id}/comments`)
+            setComments(response?.data)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
 
     // get post information from database and iterate over
-    const postComponent = prof.posts?.map((post, i) => {
+
+    let postComponent = prof.posts?.map((post, i) => {
         return (
-            <p onClick={() => openPost(i)} className='post' key={i}>{post.image}</p>
+            // console.log(post)
+            <img src={post.image} onClick={() => openPost(i)} className='post' key={i} />
+            // <p onClick={() => openPost(i)} className='post' key={i}>{post.image}</p>
         )
     })
-    const commentComponent = comments?.map((comment, i) => {
-        return (
-            <p className='postComment' key={i}>{comment?.content}</p>
-        )
+
+
+    let commentComponent = comments?.map((comment, i) => {
+        if (comment?.userId === currentUser.id) {
+            return (
+                <div className='postComment' key={i} id={comment.id}>
+                    <p>{comment?.content}</p>
+                    <button onClick={handleDeleteClick}>Delete</button>
+                </div>
+
+            )
+        } else {
+            return (
+                <div className='postComment' key={i}>
+                    <p>{comment?.content}</p>
+                </div>
+            )
+        }
     })
 
 
@@ -82,8 +126,6 @@ export default function Profile({ currentUser }) {
         grouped[j].push(postComponent[i])
     }
 
-    // console.log(grouped)
-
     const groupComponent = grouped.map((group, i) => {
         return (
             <div className='post-row' key={i}>
@@ -94,6 +136,7 @@ export default function Profile({ currentUser }) {
 
 
     function handleChange(e) {
+        e.preventDefault()
         setNewComment(e.target.value)
     }
 
@@ -104,12 +147,24 @@ export default function Profile({ currentUser }) {
         const predictions = await classify(model, text)
         if (predictions.length == 0) {
             console.log('not toxic')
+            // console.log(currentUser)
+            const reqBody = {
+                userId: currentUser.id,
+                postId: details.id,
+                content: text,
+            }
+            console.log(reqBody)
+            setNewComment('')
+            await axios.post(`${process.env.REACT_APP_SERVER_URL}/posts/${details.id}/comments`, reqBody)
+            let response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/posts/${details.id}/comments`)
+            setComments(response?.data)
         } else {
+            setNewComment('')
+            setIsToxic(true)
             console.log(predictions)
         }
-
-
     }
+
     const classify = async (model, text) => {
         const sentences = [text]; // The model takes list as input
         let predictions = await model.classify(sentences);
@@ -139,64 +194,71 @@ export default function Profile({ currentUser }) {
 
 
     return (
-        <div className="body">
-            <div>
-                {error && <p>{error}</p>}
-                {success ? (<p>Followed successfully!</p>)
-                    : (<button onClick={handleFollow}>Follow</button>)}
-            </div>
-            <Modal
-                isOpen={postIsOpen}
-                onRequestClose={closePost}
-                style={modalStyles}
-                ariaHideApp={false}
-            >
-                <div className='modal'>
-                    <h1 className='modal-header'>{details?.image}</h1>
-                    <p>{details?.caption}</p>
-                    <div>{commentComponent}</div>
-                    <form onSubmit={addComment}>
-                        <input
-                            className='modal-input'
-                            name='newComment'
-                            placeholder='New Comment'
-                            onChange={handleChange}
-                            value={newComment}
-                        />
-                        <button type="submit">Post</button>
-                    </form>
-                    <button className='modal-close' onClick={() => closePost()}>X</button>
+        <div className='app'>
+            <Header currentUser={currentUser} handleLogout={handleLogout} />
+            <div className="body">
+                <div>
+                    {error && <p>{error}</p>}
+                    {success ? (<p>Followed successfully!</p>)
+                        : (<button onClick={handleFollow}>Follow</button>)}
+                </div>
+                <Modal
+                    isOpen={postIsOpen}
+                    onRequestClose={closePost}
+                    style={modalStyles}
+                    ariaHideApp={false}
+                >
+                    <div className='modal'>
+                        <h1 className='modal-header'>{details?.image}</h1>
+                        <p>{details?.caption}</p>
+
+                        <h3>Comments</h3>
+                        <div>{commentComponent}</div>
+                        <form onSubmit={addComment}>
+                            <input
+                                className='modal-input'
+                                name='newComment'
+                                placeholder='New Comment'
+                                onChange={handleChange}
+                                value={newComment}
+                            />
+                            <button type="submit">Post</button>
+                        </form>
+                        {isToxic ? yes : no}
+                        <button className='modal-close' onClick={() => closePost()}>X</button>
+                    </div>
+
+                </Modal>
+                {/* Hello from Profile */}
+                <div className="user-info">
+                    {/* username */}
+                    <section>
+                        <div className="user-setting">
+                            <p>hello i am {prof.username}</p>
+                            {/* conditional render the items below*/}
+                            <button>Edit profile</button>
+                            <button>Follow</button>
+                            <button>Message</button>
+                        </div>
+                        <div className="user-post">
+                            <p className="tab">0 posts</p>
+                            <p className="tab">0 followers</p>
+                            <p className="tab">0 following</p>
+                        </div>
+                    </section>
+                </div>
+                <div className="post-nav">
+                    {/* list of post */}
+                    <p className="tab">Posts</p>
+                    <p className="tab">Reels</p>
+                    <p className="tab">Saved</p>
+                    <p className="tab">Tagged</p>
                 </div>
 
-            </Modal>
-            {/* Hello from Profile */}
-            <div className="user-info">
-                {/* username */}
-                <section>
-                    <div className="user-setting">
-                        <p>hello i am {prof.username}</p>
-                        {/* conditional render the items below*/}
-                        <button>Edit profile</button>
-                        <button>Follow</button>
-                        <button>Message</button>
-                    </div>
-                    <div className="user-post">
-                        <p className="tab">0 posts</p>
-                        <p className="tab">0 followers</p>
-                        <p className="tab">0 following</p>
-                    </div>
-                </section>
-            </div>
-            <div className="post-nav">
-                {/* list of post */}
-                <p className="tab">Posts</p>
-                <p className="tab">Reels</p>
-                <p className="tab">Saved</p>
-                <p className="tab">Tagged</p>
-            </div>
-            <div className="posts">
-                {/* iterated posts from db */}
-                {groupComponent}
+                <div className="posts">
+                    {/* iterated posts from db */}
+                    {groupComponent}
+                </div>
             </div>
         </div>
     );

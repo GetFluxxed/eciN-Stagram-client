@@ -7,13 +7,31 @@ import { BiSearchAlt as Search } from 'react-icons/bi'
 import { AiFillHome as Home } from 'react-icons/ai'
 import { AiOutlinePlusSquare as Plus } from 'react-icons/ai'
 
+import Upload from './Upload'
 import '../css/Header.css'
 
 
+let modalStyles = {
+    content: {
+        backgroundColor: 'rgba(0,0,0)',
+        color: 'white',
+        border: '1px solid rgb(11, 11, 11)',
+        borderRadius: '10px',
+        width: '80%',
+        margin: 'auto',
+        height: '80%',
+    },
+    overlay:{
+        backgroundColor: 'rgba(255,255,255,.2)'
+    }
+}
 
-export default function Header({ handleLogout }) {
+
+export default function Header({ handleLogout, currentUser }) {
 
     let [hamburger, setHamburger] = useState(false)
+    
+    const [newPostIsOpen, setNewPostIsOpen] = useState(false)
 
     let hamburgerOpen = () => {
         setHamburger(true)
@@ -21,6 +39,31 @@ export default function Header({ handleLogout }) {
     let hamburgerClose = () => {
         setHamburger(false)
     }
+
+    const openNewPost = async(e) => {
+        setNewPostIsOpen(true)
+    }
+
+    function closeNewPost(e) {
+        setNewPostIsOpen(false)
+    }
+
+    let loggedInHeaderLinks = (
+        <>
+            <div className='link' onClick={openNewPost}><span className="emoji"><Plus /></span> <div className='words'>Create</div></div>
+            <Link to={`/profile/${currentUser?.id}`} className='Link'>
+                <div className='link'><span className="profile-circle"></span>  <div className='words'>Profile</div></div>
+            </Link>
+        </>
+        ) 
+    let loggedInHamburgerItems =(
+        <>
+            <Link to='/register' className='Link'>
+            <div className='ham-modal-item'>Switch accounts</div>
+            </Link>
+            <div className='ham-modal-item' onClick={handleLogout}>Log out</div>
+        </>
+    )
 
     return(
         <div>
@@ -37,11 +80,19 @@ export default function Header({ handleLogout }) {
                         <div className='link'><span className="emoji"><Home /></span> <div className='words'>Home</div></div>
                     </Link>
                     <div className='link'><span className="emoji"><Search /></span> <div className='words'>Search</div></div>
-                    <div className='link'><span className="emoji"><Plus /></span> <div className='words'>Create</div></div>
-                    <Link to='/profile' className='Link'>
-                        <div className='link'><span className="profile-circle"></span>  <div className='words'>Profile</div></div>
-                    </Link>
+                    {currentUser ? loggedInHeaderLinks : null}
+                   
+                    
                 </div>
+                <Modal
+                    isOpen={newPostIsOpen}
+                    onRequestClose={closeNewPost}
+                    style={modalStyles}
+                    ariaHideApp={false}
+                >
+                    <Upload currentUser={currentUser} closeNewPost={closeNewPost}/>
+                    <button className='modal-close' onClick={() => closeNewPost()}>X</button>
+                </Modal>
                 <Modal
                     isOpen={hamburger}
                     onRequestClose={hamburgerClose}
@@ -57,7 +108,7 @@ export default function Header({ handleLogout }) {
                         content: {
                           position: 'absolute',
                           left: '2%',
-                          top: '65.7%',
+                          top: '66%',
                           width: '200px',
                           height: '210px',
                           color: 'white',
@@ -76,17 +127,13 @@ export default function Header({ handleLogout }) {
                         <div className='ham-modal-item'>Settings</div>
                         <div className='ham-modal-item'>Switch appearance</div>
                         <div className='ham-modal-item'>Report someone</div>
-                        <Link to='/register' className='Link'>
-                            <div className='ham-modal-item'>Switch accounts</div>
-                        </Link>
-                        <div className='ham-modal-item' onClick={handleLogout}>Log out</div>
+                        {currentUser ? loggedInHamburgerItems : null}
+                        
                     </div>
 
                 </Modal>
                 <div className='header-links hamburgerr'>
-                    <div className='link' onClick={hamburgerOpen}><span className='emoji'><Hamburger /></span> <span className='words'> More</span></div>
-                    <div onClick={hamburgerClose} style={{fontSize:'40px'}}>X</div>
-                </div>
+                    <div className='link' onClick={hamburgerOpen}><span className='emoji'><Hamburger /></span> <span className='words'> More</span></div>                </div>
             </div>
             <div className='header2'>
                 <p className='logo'>eciN-stagram</p>
